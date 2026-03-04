@@ -1,0 +1,177 @@
+<template>
+  <div class="row">
+    <div class="col-12">
+      <q-form ref="editForm2">
+        <c-card title="사진추가" class="cardClassDetailForm">
+          <template v-slot:card-detail>
+            <div class="col-12">
+              <c-upload
+                :attachInfo="attachInfo1"
+                label="원거리"
+                :editable="editable && !disabled"
+              />
+            </div>
+            <div class="col-12">
+              <c-upload
+                :attachInfo="attachInfo2"
+                label="근거리"
+                :editable="editable && !disabled"
+              />
+            </div>
+          </template>
+        </c-card>
+      </q-form>
+    </div>
+    <c-dialog :param="popupOptions" />
+  </div>
+</template>
+
+<script setup lang="ts">
+/******************************
+ * #Important 사용하지 않는 로직, 변수 등 선언 X
+ *******************************/
+
+import { processAccidentType } from '../processAccident'
+
+/******************************
+ * @import_선언
+ * TODO 아래 순서에 맞추어 import (각 순서 마다 띄우기)
+ *  * 1. Dependency
+ *  * 2. Utils
+ *  * 3. Types
+ *  * 4. Stores
+ *  * 5. Vue
+ *  * 6. Etc (생길 시 얘기.)
+ *******************************/
+
+/******************************
+ * @컴포넌트_옵션_선언
+ * TODO 이름 정의 (파일 이름 그대로 지정)
+ *******************************/
+defineOptions({
+  name: 'processRelationPicture'
+})
+
+/******************************
+ * @Pinia_store_선언
+ * TODO 반응형 유지를 위해 storeToRefs 사용 (function은 사용 X)
+ *******************************/
+/** message 호출 */
+
+/******************************
+ * @Emit_선언
+ *******************************/
+
+/******************************
+ * @Vue_관련_선언 (ex. vue-router)
+ *******************************/
+const route = useRoute()
+
+/******************************
+ * @Interface_선언
+ *******************************/
+interface propType {
+  accidentInfo: processAccidentType
+}
+
+/******************************
+ * @inject_선언
+ *******************************/
+
+/******************************
+ * @Props_선언
+ * TODO type & default 작성
+ *******************************/
+const props = withDefaults(defineProps<propType>(), {
+  accidentInfo: () => {
+    return {
+      iimAccidentId: '',
+      accidentStatusCd: ''
+    }
+  }
+})
+
+/******************************
+ * @VModel_선언
+ *******************************/
+
+/******************************
+ * @Data_선언
+ * TODO ref, reactive 사용, 불명확한 단어 사용 X (ex. data, date)
+ *******************************/
+const editable = ref(true)
+const popupOptions = ref<popupParamType>({
+  isFull: true,
+  target: null,
+  title: '',
+  visible: false,
+  param: {},
+  closeCallback: () => {}
+})
+const attachInfo1 = ref<attachSettingType>({
+  isSubmit: '',
+  taskClassCd: 'PROCESS_FIRST_PICTURE',
+  taskKey: ''
+})
+const attachInfo2 = ref<attachSettingType>({
+  isSubmit: '',
+  taskClassCd: 'PROCESS_SECOND_PICTURE',
+  taskKey: ''
+})
+
+/******************************
+ * @Computed_선언
+ *******************************/
+const disabled = computed(
+  () =>
+    editable.value &&
+    Boolean(props.accidentInfo.accidentStatusCd) &&
+    props.accidentInfo.accidentStatusCd === 'ISPC000005'
+)
+/******************************
+ * @Watch_선언
+ *******************************/
+watch(
+  () => props.accidentInfo.iimAccidentId,
+  () => {
+    setTaskKey()
+  }
+)
+
+/******************************
+ * @Life_cycle_선언
+ *******************************/
+onMounted(() => {
+  init()
+})
+
+/******************************
+ * @Function_선언
+ * TODO function 주석 작성 (asdffunctionannotation 사용)
+ *  * arrow function 사용해도 무관
+ *******************************/
+/******************************
+ * TODO (목적): 초기셋팅
+ *******************************/
+function init() {
+  // role setting
+  editable.value = Boolean(route.meta.editable)
+  // url setting
+  // code setting
+  // list setting
+  setTaskKey()
+}
+/******************************
+ * TODO (목적): 파일 key 세팅
+ *******************************/
+function setTaskKey() {
+  const taskKey =
+    props.accidentInfo && props.accidentInfo.iimAccidentId ? props.accidentInfo.iimAccidentId : ''
+  attachInfo1.value.taskKey = taskKey
+  attachInfo2.value.taskKey = taskKey
+}
+/******************************
+ * @Provide_선언
+ *  ! types 폴더에 type 명시
+ *******************************/
+</script>

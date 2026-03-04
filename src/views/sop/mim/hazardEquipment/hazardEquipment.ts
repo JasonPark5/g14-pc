@@ -1,0 +1,49 @@
+import { dataBaseType } from '@/types/dataBase'
+
+export interface equipInfoType extends dataBaseType {
+  hhmHazardousMachineryId: stringNull
+  equipmentTypeCd: stringNull
+  equipmentCd: stringNull
+  equipmentNo: stringNull
+  equipmentTypeName: stringNull
+  equipmentName: stringNull
+  plantCd: stringNull
+  plantName: stringNull
+  machineryClassification: stringNull
+  machineryClassificationName: stringNull
+  itemNo: stringNull
+  inspectionKindCd: stringNull
+  manufacturer: stringNull
+  manufactDate: stringNull
+  emplacementPlace: stringNull
+  emplacementMonth: stringNull
+  demolitionMonth: stringNull
+  passNumber: stringNull
+  ewrNo: stringNull
+  amount: stringNull
+  esignBasisRatedLoad: stringNull
+  esignBasisKind: stringNull
+  inspCertificateIssuanceDate: stringNull
+  lastInspectionDate: stringNull
+  inspectionSubjectFlag: stringNull
+  inspectionCycle: stringNull
+  nextInspectionDate: stringNull
+  reasonExemptionInspection: stringNull
+  machineryName: stringNull
+  gradeCd: stringNull
+  departmentDeptCd: stringNull
+  departmentUserId: stringNull
+  relatedLaws: stringNull
+  remark: stringNull
+  regUserId: stringNull
+  chgUserId: stringNull
+  subProcessCd: stringNull
+  useFlag: stringNull
+  protectDevice: stringNull
+  volume: stringNull
+  validStartDate: stringNull
+  validEndDate: stringNull
+  possibleDisaster: stringNull
+  hazardEquipmentHistoryModels: Array<any>
+  equipmentImproveModels: Array<any>
+}

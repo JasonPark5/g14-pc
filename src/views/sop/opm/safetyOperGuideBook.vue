@@ -1,0 +1,295 @@
+<template>
+  <div>
+    <c-search-box @enter="getList">
+      <template v-slot:search>
+        <!-- <div class="col-xs-12 col-sm-12 col-md-3 col-lg-3 col-xl-3">
+          <c-plant type="search" name="plantCd" v-model:value="searchParam.plantCd" />
+        </div> -->
+        <div class="col-xs-12 col-sm-12 col-md-3 col-lg-3 col-xl-3">
+          <c-field
+            type="user"
+            label="검토자"
+            name="examineUserId"
+            v-model:value="searchParam.examineUserId"
+          />
+        </div>
+        <div class="col-xs-12 col-sm-12 col-md-3 col-lg-3 col-xl-3">
+          <c-field
+            type="user"
+            label="승인자"
+            name="approvalUserId"
+            v-model:value="searchParam.approvalUserId"
+          />
+        </div>
+        <div class="col-xs-12 col-sm-12 col-md-3 col-lg-3 col-xl-3">
+          <c-select
+            :comboItems="useFlagItems"
+            type="search"
+            itemText="codeName"
+            itemValue="code"
+            name="useFlag"
+            label="사용여부"
+            v-model:value="searchParam.useFlag"
+          />
+        </div>
+      </template>
+    </c-search-box>
+    <c-table
+      ref="guideBook"
+      title="안전환경보건 규정 목록"
+      tableId="guideBook"
+      :columns="grid.columns"
+      :data="grid.data"
+      :editable="editable"
+      rowKey="guideBookId"
+      :columnSetting="false"
+      :expandAll="true"
+      @linkClick="linkClick"
+    >
+      <!-- 버튼 영역 -->
+      <template v-slot:table-button>
+        <q-btn-group outline>
+          <c-btn v-if="editable" label="등록" icon="add" @btnClicked="linkClick" />
+          <c-btn label="검색" icon="search" @btnClicked="getList" />
+        </q-btn-group>
+      </template>
+    </c-table>
+    <c-dialog :param="popupOptions" />
+  </div>
+</template>
+
+<script setup lang="ts">
+/******************************
+ * #Important 사용하지 않는 로직, 변수 등 선언 X
+ *******************************/
+
+/******************************
+ * @import_선언
+ * TODO 아래 순서에 맞추어 import (각 순서 마다 띄우기)
+ *  * 1. Dependency
+ *  * 2. Utils
+ *  * 3. Types
+ *  * 4. Stores
+ *  * 5. Vue
+ *  * 6. Etc (생길 시 얘기.)
+ *******************************/
+
+/******************************
+ * @컴포넌트_옵션_선언
+ * TODO 이름 정의 (파일 이름 그대로 지정)
+ *******************************/
+defineOptions({
+  name: 'safetyOperGuideBook'
+})
+
+/******************************
+ * @Pinia_store_선언
+ * TODO 반응형 유지를 위해 storeToRefs 사용 (function은 사용 X)
+ *******************************/
+
+/******************************
+ * @Emit_선언
+ *******************************/
+
+/******************************
+ * @Vue_관련_선언 (ex. vue-router)
+ *******************************/
+const route = useRoute()
+
+/******************************
+ * @Interface_선언
+ *******************************/
+
+/******************************
+ * @inject_선언
+ *******************************/
+const $language = inject('$language') as GetTranLanguageFunction
+
+/******************************
+ * @Props_선언
+ * TODO type & default 작성
+ *******************************/
+
+/******************************
+ * @VModel_선언
+ *******************************/
+
+/******************************
+ * @Data_선언
+ * TODO ref, reactive 사용, 불명확한 단어 사용 X (ex. data, date)
+ *******************************/
+const searchParam = ref({
+  plantCd: '',
+  examineUserId: '',
+  approvalUserId: '',
+  useFlag: 'Y'
+})
+const popupOptions = ref<popupParamType>({
+  isFull: false,
+  target: null,
+  title: '',
+  visible: false,
+  param: {},
+  closeCallback: () => {}
+})
+const grid = ref({
+  columns: [
+    {
+      name: 'plantName',
+      field: 'plantName',
+      label: '사업장',
+      align: 'center',
+      style: 'width:120px',
+      sortable: true
+    },
+    {
+      name: 'revisionNum',
+      field: 'revisionNum',
+      label: 'Rev.',
+      align: 'center',
+      style: 'width:50px',
+      sortable: true
+    },
+    {
+      name: 'guidebookNo',
+      field: 'guidebookNo',
+      label: '분류번호',
+      align: 'center',
+      style: 'width:120px',
+      sortable: true
+    },
+    {
+      name: 'guidebookName',
+      field: 'guidebookName',
+      label: '제목',
+      align: 'left',
+      style: 'width:180px',
+      type: 'link',
+      sortable: true
+    },
+    {
+      name: 'examineUserName',
+      field: 'examineUserName',
+      label: '검토자',
+      align: 'center',
+      style: 'width:100px',
+      sortable: true
+    },
+    {
+      name: 'approvalUserName',
+      field: 'approvalUserName',
+      label: '승인자',
+      align: 'center',
+      style: 'width:100px',
+      sortable: true
+    },
+    {
+      name: 'remark',
+      field: 'remark',
+      label: '규정내용',
+      type: 'html',
+      align: 'left',
+      style: 'width:300px'
+    },
+    {
+      name: 'attach',
+      field: 'attach',
+      label: '관련 파일첨부',
+      align: 'center',
+      style: 'width:180px',
+      type: 'attach',
+      taskClassCd: 'SAF_OPER_GUIDE_BOOK',
+      keyText: 'opmGuidebookId',
+      sortable: true
+    },
+    {
+      name: 'useFlagName',
+      field: 'useFlagName',
+      label: '사용여부',
+      align: 'center',
+      style: 'width:60px'
+    }
+  ],
+  data: []
+})
+const editable = ref(true)
+const listUrl = ref('')
+const useFlagItems = ref<Array<codeMasterType>>([])
+
+/******************************
+ * @Computed_선언
+ *******************************/
+
+/******************************
+ * @Watch_선언
+ *******************************/
+
+/******************************
+ * @Life_cycle_선언
+ *******************************/
+onMounted(() => {
+  init()
+})
+
+/******************************
+ * @Function_선언
+ * TODO function 주석 작성 (asdffunctionannotation 사용)
+ *  * arrow function 사용해도 무관
+ *******************************/
+/******************************
+ * TODO (목적): 초기셋팅
+ *******************************/
+function init() {
+  // role setting
+  editable.value = Boolean(route.meta.editable)
+  // url setting
+  listUrl.value = selectConfig.sop.opm.guidebook.list.url
+  // code setting
+  useFlagItems.value = [
+    { code: 'Y', codeName: $language('사용') },
+    { code: 'N', codeName: $language('미사용') }
+  ]
+  // list setting
+  getList()
+}
+
+/******************************
+ * TODO (목적): 목록 조회
+ *******************************/
+function getList() {
+  $http({
+    url: listUrl.value,
+    method: 'GET',
+    params: searchParam.value
+  }).then((_result: any) => {
+    grid.value.data = _result.data
+  })
+}
+
+/******************************
+ * TODO (목적): 상세 팝업창 표시
+ * @param (1): 행 전체 정보 (신규등록인 경우 null)
+ *******************************/
+function linkClick(row: any) {
+  popupOptions.value.title = '안전환경보건 규정 상세'
+  popupOptions.value.param = {
+    opmGuidebookId: row ? row.opmGuidebookId : ''
+  }
+  popupOptions.value.target = shallowRef(
+    defineAsyncComponent(() => import(`./safetyOperGuideBookDetail.vue`))
+  )
+  popupOptions.value.width = '80%'
+  popupOptions.value.visible = true
+  popupOptions.value.closeCallback = closePopup
+}
+function closePopup() {
+  popupOptions.value.target = null
+  popupOptions.value.visible = false
+  getList()
+}
+
+/******************************
+ * @Provide_선언
+ *  ! types 폴더에 type 명시
+ *******************************/
+</script>

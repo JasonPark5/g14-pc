@@ -1,0 +1,238 @@
+<template>
+  <!-- assessmentName 위험성평가 시나리오 목록 -->
+  <c-table
+    ref="table"
+    :title="assessmentName + $language(' 위험성평가 시나리오 목록')"
+    :columns="gridColumnsComp"
+    :data="grid.data"
+    :merge="gridMergeComp"
+    :gridHeight="grid.height"
+    @changeSelection="changeSelection"
+  >
+    <template v-slot:customArea="{ props, col }">
+      <template v-if="col.name === 'customCol'">
+        <component
+          :is="imprComponent"
+          :col="col"
+          :props="props"
+          :inputEditable="false"
+          :isImmShow="false"
+          :requestContentsCols="imprPropsComp.requestContentsCols"
+          :tableKey="imprPropsComp.tableKey"
+          :ibmTaskTypeCd="imprPropsComp.ibmTaskTypeCd"
+          :ibmTaskUnderTypeCd="imprPropsComp.ibmTaskUnderTypeCd"
+        />
+      </template>
+      <template v-else-if="col.name === 'ramRiskLevelName'">
+        <q-chip
+          text-color="white"
+          :style="`background-color:${props.row.riskColor};color:white;`"
+          outline
+          square
+        >
+          {{ props.row[col.name] }}
+        </q-chip>
+      </template>
+    </template>
+  </c-table>
+</template>
+
+<script setup lang="ts">
+/******************************
+ * #Important 사용하지 않는 로직, 변수 등 선언 X
+ *******************************/
+import { gridColumns, gridMerge, imprProps } from './reCheckComp'
+
+/******************************
+ * @import_선언
+ * TODO 아래 순서에 맞추어 import (각 순서 마다 띄우기)
+ *  * 1. Dependency
+ *  * 2. Utils
+ *  * 3. Types
+ *  * 4. Stores
+ *  * 5. Vue
+ *  * 6. Etc (생길 시 얘기.)
+ *******************************/
+
+/******************************
+ * @컴포넌트_옵션_선언
+ * TODO 이름 정의 (파일 이름 그대로 지정)
+ *******************************/
+defineOptions({
+  name: 'reCheckSecnario'
+})
+
+/******************************
+ * @Pinia_store_선언
+ * TODO 반응형 유지를 위해 storeToRefs 사용 (function은 사용 X)
+ *******************************/
+
+/******************************
+ * @Emit_선언
+ *******************************/
+
+/******************************
+ * @Vue_관련_선언 (ex. vue-router)
+ *******************************/
+const route = useRoute()
+
+/******************************
+ * @Interface_선언
+ *******************************/
+interface propType {
+  popupParam: {
+    ramRiskAssessmentPlanId: stringNull
+    ramTechniqueCd: stringNull
+  }
+  summary: {
+    data: Array<any>
+  }
+  ramRiskAssessmentPlanId: stringNull
+  assessmentName: stringNull
+}
+
+/******************************
+ * @inject_선언
+ *******************************/
+
+/******************************
+ * @Props_선언
+ * TODO type & default 작성
+ *******************************/
+const props = withDefaults(defineProps<propType>(), {
+  popupParam: () => ({
+    ramRiskAssessmentPlanId: '',
+    ramTechniqueCd: ''
+  }),
+  summary: () => ({
+    data: []
+  }),
+  ramRiskAssessmentPlanId: '',
+  assessmentName: ''
+})
+
+/******************************
+ * @VModel_선언
+ *******************************/
+
+/******************************
+ * @Data_선언
+ * TODO ref, reactive 사용, 불명확한 단어 사용 X (ex. data, date)
+ *******************************/
+const editable = ref(true)
+
+const grid = ref({
+  height: '550px',
+  data: []
+})
+const imprComponent = defineAsyncComponent(() => import(`@views/common/ibm/tableImpr.vue`))
+const table = ref<any>(null)
+const selectRisks = ref(Array<any>)
+
+/******************************
+ * @Computed_선언
+ *******************************/
+const gridColumnsComp = computed(() => {
+  return gridColumns(props.popupParam.ramTechniqueCd)
+})
+const gridMergeComp = computed(() => {
+  return gridMerge(props.popupParam.ramTechniqueCd)
+})
+const imprPropsComp = computed(() => {
+  return imprProps(props.popupParam.ramTechniqueCd)
+})
+
+const listUrl = computed(() => {
+  let url = ''
+  if (props.popupParam.ramTechniqueCd === 'RT00000001') {
+    // HAZOP 아직..
+    url = selectConfig.ram.hazop.scenario.list.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000005') {
+    // K-PSR
+    url = selectConfig.ram.kpsr.scenario.list.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000010') {
+    // Check-list 아직..
+    url = selectConfig.ram.checklist.scenario.list.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000015') {
+    // JRA
+    url = selectConfig.ram.jsa.scenario.list.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000020') {
+    // KRAS
+    url = selectConfig.ram.kras.scenario.list.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000025') {
+    // 4M
+    url = selectConfig.ram.fm.scenario.list.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000030') {
+    // CHARM 아직..
+    url = selectConfig.ram.charm.scenario.result.url
+  } else if (props.popupParam.ramTechniqueCd === 'RT00000035') {
+    // 3단계 판단법
+    url = selectConfig.ram.third.scenario.list.url
+  }
+  return url
+})
+
+/******************************
+ * @Watch_선언
+ *******************************/
+watch(
+  () => props.ramRiskAssessmentPlanId,
+  () => {
+    getList()
+  },
+  { deep: true }
+)
+
+/******************************
+ * @Life_cycle_선언
+ *******************************/
+onMounted(() => {
+  init()
+})
+
+/******************************
+ * @Function_선언
+ * TODO function 주석 작성 (asdffunctionannotation 사용)
+ *  * arrow function 사용해도 무관
+ *******************************/
+/******************************
+ * TODO (목적): 초기셋팅
+ *******************************/
+function init() {
+  // role setting
+  editable.value = Boolean(route.meta.editable)
+  // url setting
+  // code setting
+  // list setting
+  getList()
+}
+/******************************
+ * TODO (목적): 목록 조회
+ *******************************/
+function getList() {
+  // 선택된 위험성평가 정보가 있는 경우
+  if (props.ramRiskAssessmentPlanId) {
+    $http({
+      url: listUrl.value,
+      method: 'GET',
+      params: {
+        ramRiskAssessmentPlanId: props.ramRiskAssessmentPlanId,
+        ramTechniqueCd: props.popupParam.ramTechniqueCd
+      }
+    }).then((_result: any) => {
+      grid.value.data = _result.data
+    })
+  }
+}
+/******************************
+ * TODO (목적): 데이터 변경시
+ *******************************/
+function changeSelection() {
+  const selectData = table.value.getSelected()
+  selectRisks.value = selectData
+}
+/******************************
+ * @Provide_선언
+ *  ! types 폴더에 type 명시
+ *******************************/
+</script>

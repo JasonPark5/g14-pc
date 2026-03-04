@@ -1,0 +1,227 @@
+import { quasar, transformAssetUrls } from '@quasar/vite-plugin'
+import vue from '@vitejs/plugin-vue'
+import path from 'path'
+import AutoImport from 'unplugin-auto-import/vite'
+import { fileURLToPath, URL } from 'url'
+import { type ConfigEnv, type UserConfigExport, loadEnv } from 'vite'
+import { createSvgIconsPlugin } from 'vite-plugin-svg-icons'
+import svgLoader from 'vite-svg-loader'
+// import Components from 'unplugin-vue-components/vite'
+
+/** https://cn.vitejs.dev/config */
+export default ({ mode }: ConfigEnv): UserConfigExport => {
+  const viteEnv = loadEnv(mode, process.cwd()) as ImportMetaEnv
+  const { VITE_PUBLIC_PATH, VITE_API_URL } = viteEnv
+  return {
+    base: VITE_PUBLIC_PATH,
+    resolve: {
+      alias: [
+        { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
+        { find: '@views', replacement: fileURLToPath(new URL('./src/views', import.meta.url)) },
+        { find: '@popups', replacement: fileURLToPath(new URL('./src/popups', import.meta.url)) },
+        { find: '@layouts', replacement: fileURLToPath(new URL('./src/layouts', import.meta.url)) },
+        {
+          find: '@utils',
+          replacement: fileURLToPath(new URL('./src/common/utils', import.meta.url))
+        },
+        {
+          find: '@images',
+          replacement: fileURLToPath(new URL('./src/assets/images', import.meta.url))
+        },
+        { find: '@stores', replacement: fileURLToPath(new URL('./src/stores', import.meta.url)) },
+        { find: '@assets', replacement: fileURLToPath(new URL('./src/assets', import.meta.url)) },
+        {
+          find: '@components',
+          replacement: fileURLToPath(new URL('./src/components', import.meta.url))
+        }
+      ]
+    },
+    server: {
+      /** IP로 프로젝트에 액세스하기 위해 네트워크 형식을 사용. */
+      host: true, // host: "0.0.0.0"
+      /** 포트 */
+      port: 14000,
+      /** 브라우저를 자동으로 열지 여부 */
+      open: true,
+      /** 도메인 간 설정이 허용 */
+      cors: true,
+      /** 포트가 점유된 상태에서 바로 나갈지 여부 */
+      strictPort: false,
+      /** API 서버 프록시 */
+      proxy: {
+        '/api/': {
+          target: VITE_API_URL,
+          ws: true,
+          /** 도메인 간 허용 여부 */
+          changeOrigin: true
+        }
+      },
+      /** 일반적으로 사용되는 파일을 예열(warmup)하여 초기 페이지 로딩 속도 향상 */
+      warmup: {
+        clientFiles: ['./src/layouts/**/*.vue']
+      }
+    },
+    // publicDir: path.resolve(__dirname, 'src/assets'),
+    build: {
+      /** 단일 청크 파일의 크기가 2048KB를 초과하면 경고 */
+      chunkSizeWarningLimit: 2048,
+      /** gzip 압축 크기 보고 비활성화 */
+      reportCompressedSize: false,
+      /** 패키징 후 정적 리소스 디렉터리 */
+      assetsDir: 'dist',
+      rollupOptions: {
+        output: {
+          /***
+           * 청킹 전략
+           * 1. 패키지 이름이 없으면 패키징 중에 오류가 보고됨.
+           * 2. 청크 분할 전략을 사용자 정의하고 싶지 않은 경우 이 구성을 직접 제거.
+           * * 청크파일이 도움이 되지만, 너무 많을 시에는 로딩속도 문제가 발생함에 따라 자주 사용하는 패키지를 찢어서 관리
+           */
+          manualChunks: (id) => {
+            // 1. 핵심 UI 프레임워크 및 아이콘 (거의 안 바뀜)
+            if (id.includes('node_modules/quasar') || id.includes('material-icons')) {
+              return 'vendor-ui'
+            }
+            // 2. 무거운 데이터/차트 라이브러리 (필요할 때만 로드되도록 분리)
+            if (id.includes('node_modules/apexcharts') || id.includes('node_modules/d3')) {
+              return 'vendor-charts'
+            }
+            // 3. 엑셀 및 비디오 라이브러리
+            if (id.includes('node_modules/xlsx') || id.includes('node_modules/video.js')) {
+              return 'vendor-utils'
+            }
+            // 4. 공통 라이브러리 (lodash, moment, axios 등)
+            if (id.includes('node_modules')) {
+              return 'vendor-libs'
+            }
+          }
+        }
+      }
+    },
+    /** Vite esbuild시 처리 작업 */
+    esbuild:
+      mode === 'production' || mode === 'otherproduction' // 운영환경인 경우만 작업
+        ? {
+            /** 패키징 시 console.log 제거 */
+            pure: ['console.log'],
+            /** 패키징 시 디버거 제거 */
+            drop: ['debugger'],
+            /** 패키징 시 모든 주석 제거 */
+            legalComments: 'none'
+          }
+        : undefined,
+    /** Vite 플러그인 */
+    plugins: [
+      vue({
+        template: { transformAssetUrls }
+      }),
+      /** SVG 정적 이미지를 Vue 구성 요소로 변환 */
+      svgLoader({ defaultImport: 'url' }),
+      /** SVG */
+      createSvgIconsPlugin({
+        iconDirs: [path.resolve(process.cwd(), 'src/assets/images/icon')],
+        symbolId: 'icon-[dir]-[name]'
+      }),
+      quasar({
+        // sassVariables: 'src/assets/quasar-variables.scss'
+      }),
+      AutoImport({
+        include: [/\.[tj]sx?$/, /\.vue\??/],
+        imports: [
+          // presets
+          'vue',
+          'vue-router',
+          'pinia',
+          {
+            vue: ['createVNode', 'render'],
+            'vue-router': ['useRouter', 'useRoute'],
+            quasar: ['uid', 'useQuasar'],
+            'lodash-es': [
+              // default imports
+              ['*', '_'] // import { * as _ } from 'lodash-es',
+            ],
+            'string-format': [['default', '$format']]
+          },
+          // type import
+          {
+            from: 'vue',
+            imports: [
+              'App',
+              'VNode',
+              'ComponentPublicInstance',
+              'ComponentPublicInstanceCostom',
+              'ComponentInternalInstance'
+            ],
+            type: true
+          },
+          {
+            from: 'vue-router',
+            imports: [
+              'RouteRecordRaw',
+              'RouteLocationRaw',
+              'LocationQuery',
+              'RouteParams',
+              'RouteLocationNormalizedLoaded',
+              'RouteRecordName',
+              'NavigationGuard'
+            ],
+            type: true
+          },
+          {
+            from: 'src/types',
+            imports: [
+              'GetTranLanguageFunction',
+              'tabItemsType',
+              'ErrorFunction',
+              // 'dataBaseType',
+              'tableMergeType',
+              'tableColumnType',
+              'tableColumnImageRestrictionType',
+              'tableColumnInnerBtnType',
+              'attachSettingType',
+              'apprInfoType',
+              'codeMasterType',
+              'stepMasterType',
+              'deptType',
+              'favorite',
+              'popupParamType',
+              'closePopupType',
+              'processDeptType',
+              'processType',
+              'userType',
+              'vendorType',
+              'vendorUserType',
+              'objectStringNumber',
+              'objectString',
+              'arrayObject',
+              'arrayString',
+              'arrayNumber',
+              'objectLodash',
+              'stringNull',
+              'numberNull'
+            ],
+            type: true
+          }
+        ],
+        // resolvers: mode === 'development' ? [] : [NaiveUiResolver()],
+        dirs: ['./src/stores/**', './src/types/**', './src/common/utils/**'],
+        dts: './types/auto-imports.d.ts',
+        vueTemplate: false,
+        viteOptimizeDeps: true,
+        injectAtEnd: true,
+        eslintrc: {
+          enabled: true
+        }
+      })
+    ],
+    css: {
+      preprocessorOptions: {
+        sass: {
+          api: 'modern',
+          silenceDeprecations: ['legacy-js-api'],
+          quietDeps: true
+        }
+      }
+    }
+  }
+}
