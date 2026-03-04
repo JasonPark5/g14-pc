@@ -1,5 +1,6 @@
 import router from '@/router'
 import { storeToRefs } from 'pinia'
+import { watch } from 'vue'
 
 import { getToken, haveRoute } from '@/common/auth'
 import transactionConfig from '@utils/transactionConfig'
@@ -102,10 +103,42 @@ router.beforeEach(async (to, from, next) => {
     // 토큰 유효성 검증
     try {
       await login.ValidCheckToken()
+
+      // 새로고침 시: 사용자 정보가 없으면 로드
+      if (!user.value.empNo) {
+        await userStore.refetchUser()
+      }
+
+      // 동적 라우트가 아직 미등록이면 메뉴 로드 대기 (최대 5초)
+      if (addRouters.value.length === 0 && user.value.empNo) {
+        await waitForRoutes(permission, 5000)
+      }
+
+      // 라우트 권한 재확인 (메뉴 로드 후)
+      if (addRouters.value.length > 0 && whiteList.indexOf(to.path) === -1 && !haveRoute(addRouters.value, to.path)) {
+        next({ path: '/404' })
+        return
+      }
+
       next()
     } catch {
       try {
         await login.UpdateTokenByRefreshToken()
+
+        // 리프레시 토큰 갱신 후에도 사용자 정보 로드
+        if (!user.value.empNo) {
+          await userStore.refetchUser()
+        }
+
+        if (addRouters.value.length === 0 && user.value.empNo) {
+          await waitForRoutes(permission, 5000)
+        }
+
+        if (addRouters.value.length > 0 && whiteList.indexOf(to.path) === -1 && !haveRoute(addRouters.value, to.path)) {
+          next({ path: '/404' })
+          return
+        }
+
         next()
       } catch {
         console.error('### [Guard] 토큰 갱신 실패')
@@ -141,4 +174,31 @@ async function clearAndRedirect(login, next) {
   } finally {
     next('/login')
   }
+}
+
+/** 동적 라우트 등록 완료 대기 (최대 timeout ms) */
+function waitForRoutes(permission, timeout) {
+  return new Promise((resolve) => {
+    if (permission.addRouters && permission.addRouters.length > 0) {
+      resolve()
+      return
+    }
+
+    const timer = setTimeout(() => {
+      console.warn('### [Guard] 라우트 로드 타임아웃')
+      unwatch()
+      resolve()
+    }, timeout)
+
+    const unwatch = watch(
+      () => permission.addRouters,
+      (val) => {
+        if (val && val.length > 0) {
+          clearTimeout(timer)
+          unwatch()
+          resolve()
+        }
+      }
+    )
+  })
 }
