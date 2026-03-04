@@ -320,14 +320,16 @@ function actionLogin() {
 }
 
 function loginPageMove() {
-  router
-    .push({
-      path:
-        redirect.value === 'undefined' || redirect.value === undefined
-          ? '/'
-          : redirect.value || '/login'
-    })
-    .catch(() => {})
+  let targetPath = '/'
+  if (
+    redirect.value &&
+    redirect.value !== 'undefined' &&
+    redirect.value !== '/login' &&
+    redirect.value !== '/login-callback'
+  ) {
+    targetPath = redirect.value
+  }
+  router.push({ path: targetPath }).catch(() => {})
 }
 
 function getLangInfo() {
@@ -372,11 +374,8 @@ function getLangInfo() {
   })
 }
 
-function getUserDeptInfo() {
-  // eslint-disable-next-line no-async-promise-executor
-  return new Promise(async (_resolve, _reject) => {
-    Promise.all([systemInfo.refetchUser(), systemInfo.refetchDept(), systemInfo.refetchVendor()])
-  })
+async function getUserDeptInfo() {
+  await Promise.all([systemInfo.refetchUser(), systemInfo.refetchDept(), systemInfo.refetchVendor()])
 }
 
 function changePassword(message: string) {
