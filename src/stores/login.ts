@@ -77,30 +77,31 @@ export const useLoginStore = defineStore('login', () => {
     return true
   }
 
-  function LoginByUserAccount(userInfo: loginData) {
+  async function LoginByUserAccount(userInfo: loginData) {
     const userId = userInfo.userId.trim()
-    return new Promise((resolve, reject) => {
-      storeApi
-        .loginByUserAccount(userId, userInfo.password, userInfo.connIp, userInfo.otppassword)
-        .then((response: any) => {
-          const data = response.data
-          token.value = data.userId
-          accessToken.value = data.accessToken
-          refreshToken.value = data.refreshToken
+    try {
+      const response: any = await storeApi.loginByUserAccount(
+        userId,
+        userInfo.password,
+        userInfo.connIp,
+        userInfo.otppassword
+      )
+      const data = response.data
+      token.value = data.userId
+      accessToken.value = data.accessToken
+      refreshToken.value = data.refreshToken
 
-          setToken(response.data.userId)
-          setAccessToken(response.data.accessToken)
-          setRefreshToken(response.data.refreshToken)
+      setToken(response.data.userId)
+      setAccessToken(response.data.accessToken)
+      setRefreshToken(response.data.refreshToken)
 
-          userStore.refetchUser()
-          langStore.refetchLang()
+      await userStore.refetchUser()
+      await langStore.refetchLang()
 
-          resolve(true)
-        })
-        .catch((error: any) => {
-          reject(error)
-        })
-    })
+      return true
+    } catch (error: any) {
+      throw error
+    }
   }
 
   function LogOut() {

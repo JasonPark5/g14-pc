@@ -12,8 +12,9 @@
 import { getAccessToken } from '@/common/auth'
 import { useLangTranStore } from '@stores/langTran'
 import { useLoginStore } from '@stores/login'
+import { usePermissionStore } from '@stores/permission'
 import { useUserStore } from '@stores/user'
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 defineOptions({ name: 'LoginCallback' })
@@ -23,9 +24,39 @@ const router = useRouter()
 const loginStore = useLoginStore()
 const userStore = useUserStore()
 const langStore = useLangTranStore()
+const permissionStore = usePermissionStore()
 
 const statusMessage = ref('보안 인증 처리 중...')
 const errorMessage = ref('')
+
+/** 권한 메뉴 로드 완료 대기 (최대 5초) */
+function waitForMenuLoad(): Promise<void> {
+  return new Promise((resolve) => {
+    // 이미 로드 완료된 경우
+    if (permissionStore.addRouters && permissionStore.addRouters.length > 0) {
+      resolve()
+      return
+    }
+
+    const timeout = setTimeout(() => {
+      console.warn('### [LoginCallback] 메뉴 로드 타임아웃, 계속 진행')
+      unwatch()
+      resolve()
+    }, 5000)
+
+    const unwatch = watch(
+      () => permissionStore.addRouters,
+      (newRouters) => {
+        if (newRouters && newRouters.length > 0) {
+          clearTimeout(timeout)
+          unwatch()
+          resolve()
+        }
+      },
+      { immediate: true }
+    )
+  })
+}
 
 onMounted(async () => {
   try {
@@ -58,8 +89,9 @@ onMounted(async () => {
     // 4. 언어 정보 로드
     await langStore.refetchLang()
 
-    // 5. 잠시 대기
-    await new Promise((r) => setTimeout(r, 300))
+    // 5. 권한 메뉴 로드 대기 (최대 5초)
+    statusMessage.value = '메뉴 권한 확인 중...'
+    await waitForMenuLoad()
 
     statusMessage.value = '로그인 성공!'
 

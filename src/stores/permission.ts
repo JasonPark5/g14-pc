@@ -105,7 +105,7 @@ export const usePermissionStore = defineStore('permission', () => {
 
   const routers = ref<Array<menuData>>([])
   const addRouters = ref<Array<accessRouterData>>([])
-  const allMenus = ref<Array<menuData>>([])
+  const allMenus = ref<Array<responseMenuData>>([])
   const openMenus = ref<Array<string>>([])
 
   const menuVueQuery = ref({
@@ -177,12 +177,22 @@ export const usePermissionStore = defineStore('permission', () => {
     }
   })
 
+  let isInitialMenuLoad = true
+
   watch(
     () => menuQuery.isFetching.value,
     () => {
       if (!menuQuery.isFetching.value) {
         menuVueQuery.value.isFetching = false
-        router.push({ path: route.fullPath || user.value.url }).catch(() => {})
+        // 초기 메뉴 로드 시에만 라우터 갱신, 이후 refetch에서는 불필요한 네비게이션 방지
+        if (isInitialMenuLoad && addRouters.value.length > 0) {
+          isInitialMenuLoad = false
+          const targetPath = route.fullPath || user.value.url
+          // 현재 경로와 동일하면 push 하지 않음 (무한 루프 방지)
+          if (targetPath && targetPath !== route.fullPath) {
+            router.push({ path: targetPath }).catch(() => {})
+          }
+        }
       }
     }
   )
@@ -194,20 +204,22 @@ export const usePermissionStore = defineStore('permission', () => {
   function findOpenMenus(name: string, selfOpen?: boolean) {
     openMenus.value = []
     if (name && allMenus.value && allMenus.value.length > 0) {
-      const currentMenu: menuData = _.find(allMenus.value, { sysMenuId: name }) as menuData
+      const currentMenu = _.find(allMenus.value, { sysMenuId: name }) as responseMenuData | undefined
       if (currentMenu && currentMenu.upMenuId) {
         findUpMenu(currentMenu.upMenuId)
       }
-      if (selfOpen) {
-        openMenus.value.push(currentMenu.sysMenuId!)
+      if (selfOpen && currentMenu?.sysMenuId) {
+        openMenus.value.push(currentMenu.sysMenuId)
       }
     }
   }
 
   function findUpMenu(upMenuId: string) {
-    const upMenu: menuData = _.find(allMenus.value, { sysMenuId: upMenuId }) as menuData
+    const upMenu = _.find(allMenus.value, { sysMenuId: upMenuId }) as responseMenuData | undefined
     if (upMenu) {
-      openMenus.value.push(upMenu.sysMenuId!)
+      if (upMenu.sysMenuId) {
+        openMenus.value.push(upMenu.sysMenuId)
+      }
       findUpMenu(upMenu.upMenuId)
     }
   }

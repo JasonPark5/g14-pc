@@ -128,15 +128,17 @@ export function getPassPasswordCode() {
 }
 
 export function haveRoute(routers: Array<accessRouterData>, path: string) {
-  let returnVal = false
-  if (routers && routers.length > 0) {
-    for (let i = 0; i < routers.length; i++) {
-      if (routers[i].path === path) {
-        return true
-      } else {
-        returnVal = false
-      }
+  if (!routers || routers.length === 0) return false
+  for (let i = 0; i < routers.length; i++) {
+    const routerPath = routers[i].path
+    // 정확한 매칭
+    if (routerPath === path) {
+      return true
+    }
+    // 파라미터가 포함된 경로 매칭 (예: /a/b/c 가 /a/b/c/param1 의 기본 경로인 경우)
+    if (routerPath && path.startsWith(routerPath + '/')) {
+      return true
     }
   }
-  return returnVal
+  return false
 }
