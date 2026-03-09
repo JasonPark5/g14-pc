@@ -109,43 +109,11 @@ router.beforeEach(async (to, from, next) => {
     // 토큰 유효성 검증
     try {
       await login.ValidCheckToken()
-
-      // 새로고침 시: 사용자 정보가 없으면 로드
-      if (!user.value.empNo) {
-        await userStore.refetchUser()
-      }
-
-      // 동적 라우트가 아직 미등록이면 메뉴 로드 대기 (최대 5초)
-      if (addRouters.value.length === 0 && user.value.empNo) {
-        await waitForRoutes(permission, 5000)
-      }
-
-      // 라우트 권한 재확인 (메뉴 로드 후)
-      if (addRouters.value.length > 0 && whiteList.indexOf(to.path) === -1 && !haveRoute(addRouters.value, to.path)) {
-        next({ path: '/404' })
-        return
-      }
-
-      next()
+      await ensureUserAndRoutes(user, userStore, addRouters, permission, to, next)
     } catch {
       try {
         await login.UpdateTokenByRefreshToken()
-
-        // 리프레시 토큰 갱신 후에도 사용자 정보 로드
-        if (!user.value.empNo) {
-          await userStore.refetchUser()
-        }
-
-        if (addRouters.value.length === 0 && user.value.empNo) {
-          await waitForRoutes(permission, 5000)
-        }
-
-        if (addRouters.value.length > 0 && whiteList.indexOf(to.path) === -1 && !haveRoute(addRouters.value, to.path)) {
-          next({ path: '/404' })
-          return
-        }
-
-        next()
+        await ensureUserAndRoutes(user, userStore, addRouters, permission, to, next)
       } catch {
         console.error('### [Guard] 토큰 갱신 실패')
         await clearAndRedirect(login, next)
@@ -171,6 +139,41 @@ router.afterEach((to) => {
 
   app.setLoading(false)
 })
+
+/**
+ * 사용자 정보 및 동적 라우트 로드를 보장한 후 네비게이션 진행
+ * 라우트가 새로 등록된 경우 재네비게이션하여 Vue Router가 라우트를 re-resolve하도록 함
+ */
+async function ensureUserAndRoutes(user, userStore, addRouters, permission, to, next) {
+  const routesWereEmpty = addRouters.value.length === 0
+
+  // 새로고침/로그인 시: 사용자 정보가 없으면 로드
+  if (!user.value.empNo) {
+    await userStore.refetchUser()
+  }
+
+  // 동적 라우트가 아직 미등록이면 메뉴 로드 대기 (최대 5초)
+  if (routesWereEmpty && user.value.empNo) {
+    await waitForRoutes(permission, 5000)
+  }
+
+  // 라우트 권한 재확인 (메뉴 로드 후)
+  if (addRouters.value.length > 0 && whiteList.indexOf(to.path) === -1 && !haveRoute(addRouters.value, to.path)) {
+    next({ path: '/404' })
+    return
+  }
+
+  // 라우트가 이번 네비게이션 중 새로 등록된 경우:
+  // Vue Router는 push 시점에 라우트를 resolve하므로, 등록 전에 push된 경우
+  // to.matched가 비어있음 → next()로는 컴포넌트가 렌더링되지 않음
+  // 재네비게이션하여 라우트를 다시 resolve해야 함
+  if (routesWereEmpty && addRouters.value.length > 0) {
+    next({ path: to.path, query: to.query, hash: to.hash })
+    return
+  }
+
+  next()
+}
 
 async function clearAndRedirect(login, next) {
   try {
