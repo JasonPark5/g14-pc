@@ -187,8 +187,10 @@ export const usePermissionStore = defineStore('permission', () => {
         // 초기 메뉴 로드 시에만 라우터 갱신, 이후 refetch에서는 불필요한 네비게이션 방지
         if (isInitialMenuLoad && addRouters.value.length > 0) {
           isInitialMenuLoad = false
-          // 새로고침 시: 동적 라우트 등록 후 현재 경로를 재resolve하여 컴포넌트 로드
-          router.replace({ path: route.fullPath }).catch(() => {})
+          // 로그인 페이지에서는 replace하지 않음 (redirect 쿼리 파라미터 보존, 로그인 플로우 간섭 방지)
+          if (route.path !== '/login' && route.path !== '/login-callback') {
+            router.replace({ path: route.fullPath }).catch(() => {})
+          }
         }
       }
     }

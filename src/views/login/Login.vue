@@ -207,7 +207,13 @@ const loginForm = reactive({
   password: ''
 })
 const loading = ref(false)
-const redirect = ref<string | null>(null)
+// redirect 값을 초기 쿼리에서 저장 (로그인 중 라우트 변경 시 유실 방지)
+const initialRedirect = route.query?.redirect
+const redirect = ref<string | null>(
+  initialRedirect && String(initialRedirect) !== 'undefined'
+    ? String(initialRedirect)
+    : null
+)
 const popupOptions = ref<popupParamType>({
   target: null,
   title: '',
@@ -218,14 +224,6 @@ const popupOptions = ref<popupParamType>({
   closeCallback: null
 })
 const lang = ref('')
-
-watch(
-  route,
-  () => {
-    redirect.value = String(route.query?.redirect)
-  },
-  { immediate: true }
-)
 
 onBeforeMount(() => {
   lang.value = Cookies.get('language') || 'kr'

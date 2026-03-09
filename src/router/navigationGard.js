@@ -86,6 +86,12 @@ router.beforeEach(async (to, from, next) => {
 
     // 로그인 페이지 접근 시 메인으로 리다이렉트
     if (to.path === '/login') {
+      // redirect 쿼리 파라미터가 있으면 우선 사용
+      const redirectPath = to.query.redirect
+      if (redirectPath && String(redirectPath) !== '/login' && String(redirectPath) !== '/login-callback') {
+        next({ path: String(redirectPath) })
+        return
+      }
       let targetPath = user.value.url || '/'
       if (targetPath === '/login-callback' || targetPath === '/login') {
         targetPath = '/'
