@@ -25,6 +25,7 @@ const loginStore = useLoginStore()
 const userStore = useUserStore()
 const langStore = useLangTranStore()
 const permissionStore = usePermissionStore()
+const systemInfo = useSystemInfoStore()
 
 const statusMessage = ref('보안 인증 처리 중...')
 const errorMessage = ref('')
@@ -89,7 +90,15 @@ onMounted(async () => {
     // 4. 언어 정보 로드
     await langStore.refetchLang()
 
-    // 5. 권한 메뉴 로드 대기 (최대 5초)
+    // 5. 부서/사용자/업체 정보 로드 (일반 로그인의 getUserDeptInfo와 동일)
+    statusMessage.value = '부서 정보 확인 중...'
+    await Promise.all([
+      systemInfo.refetchUser(),
+      systemInfo.refetchDept(),
+      systemInfo.refetchVendor()
+    ])
+
+    // 6. 권한 메뉴 로드 대기 (최대 5초)
     statusMessage.value = '메뉴 권한 확인 중...'
     await waitForMenuLoad()
 
